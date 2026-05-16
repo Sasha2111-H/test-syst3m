@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест-Система</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="logo">📚 Тест-Система</div>
+            <div class="nav-menu">
+                <a href="#" onclick="showPage('home')">🏠 Главная</a>
+                <div id="guestLinks">
+                    <a href="#" onclick="showPage('login')">🔑 Вход</a>
+                    <a href="#" onclick="showPage('register')">📝 Регистрация</a>
+                </div>
+                <div id="userLinks" style="display:none">
+                    <span id="userName"></span>
+                    <a href="#" onclick="showPage('groups')" id="groupsLink">👥 Мои группы</a>
+                    <a href="#" onclick="showPage('myTests')" id="myTestsLink" style="display:none">📝 Мои тесты</a>
+                    <a href="#" onclick="showPage('teacher')" id="teacherLink" style="display:none">📊 Статистика</a>
+                    <a href="#" onclick="logout()">🚪 Выход</a>
+                </div>
+            </div>
+        </nav>
+
+        <div id="homePage" class="page active">
+            <div class="page-header">
+                <h1>📋 Доступные тесты</h1>
+                <p>Выберите тест для прохождения</p>
+            </div>
+            <div id="testsList" class="tests-grid"></div>
+        </div>
+
+        <div id="loginPage" class="page">
+            <div class="form-card">
+                <div class="form-icon">🔐</div>
+                <h2>Вход в систему</h2>
+                <form id="loginForm">
+                    <div class="input-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" placeholder="Введите email" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Пароль</label>
+                        <input type="password" id="loginPassword" placeholder="Введите пароль" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Войти</button>
+                </form>
+                <p class="form-footer">Нет аккаунта? <a href="#" onclick="showPage('register')">Зарегистрируйтесь</a></p>
+            </div>
+        </div>
+
+        <div id="registerPage" class="page">
+            <div class="form-card">
+                <div class="form-icon">📝</div>
+                <h2>Регистрация</h2>
+                <div id="step1">
+                    <div class="input-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" placeholder="Введите email" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Роль</label>
+                        <select id="regRole">
+                            <option value="student">🎓 Ученик</option>
+                            <option value="teacher">👨‍🏫 Учитель</option>
+                        </select>
+                    </div>
+                    <button id="sendCodeBtn" class="btn-primary">Отправить код</button>
+                </div>
+                <div id="step2" style="display:none">
+                    <div class="input-group">
+                        <label>Код подтверждения</label>
+                        <input type="text" id="regCode" placeholder="Введите код из письма" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Имя и фамилия</label>
+                        <input type="text" id="regFullName" placeholder="Иван Иванов" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Логин</label>
+                        <input type="text" id="regUsername" placeholder="Придумайте логин" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Пароль</label>
+                        <input type="password" id="regPassword" placeholder="Придумайте пароль (мин. 6 символов)" required>
+                    </div>
+                    <button id="verifyBtn" class="btn-primary">Завершить регистрацию</button>
+                </div>
+                <p class="form-footer">Уже есть аккаунт? <a href="#" onclick="showPage('login')">Войдите</a></p>
+            </div>
+        </div>
+
+        <div id="groupsPage" class="page">
+            <div id="studentGroupsView" style="display:none">
+                <div class="page-header">
+                    <h2>👥 Мои группы</h2>
+                </div>
+                <div id="myGroupsList" class="groups-grid"></div>
+                <hr class="divider">
+                <div class="page-header">
+                    <h2>🔍 Доступные группы</h2>
+                </div>
+                <div id="availableGroupsList" class="groups-grid"></div>
+            </div>
+            <div id="teacherGroupsView" style="display:none">
+                <div id="teacherGroupsHeader">
+                    <div class="page-header">
+                        <h2>👥 Мои группы</h2>
+                        <button id="createGroupBtn" class="btn-primary" style="width:auto;">➕ Создать группу</button>
+                    </div>
+                    <div id="createGroupForm" style="display:none" class="form-card">
+                        <h3>Новая группа</h3>
+                        <div class="input-group">
+                            <label>Название группы</label>
+                            <input type="text" id="newGroupName" placeholder="Введите название" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Описание</label>
+                            <textarea id="newGroupDesc" placeholder="Опишите группу" rows="3"></textarea>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="createGroup()" class="btn-primary">Создать</button>
+                            <button onclick="hideCreateGroupForm()" class="btn-outline">Отмена</button>
+                        </div>
+                    </div>
+                    <div id="teacherGroupsList" class="groups-grid"></div>
+                </div>
+                <div id="groupDetailsContainer" style="display:none;">
+                    <div id="groupDetailsContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="myTestsPage" class="page">
+            <div class="page-header">
+                <h2>📝 Мои тесты</h2>
+            </div>
+            <div id="myTestsList" class="tests-grid"></div>
+        </div>
+
+        <div id="teacherPage" class="page">
+            <div class="page-header">
+                <h2>📊 Панель статистики</h2>
+                <p>Общая информация по вашим группам и тестам</p>
+            </div>
+            <div class="stats-grid" id="teacherStats">
+                <div class="stat-card purple">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number" id="statGroups">0</div>
+                    <div class="stat-label">Групп</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-number" id="statTests">0</div>
+                    <div class="stat-label">Тестов</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-icon">🎓</div>
+                    <div class="stat-number" id="statStudents">0</div>
+                    <div class="stat-label">Учеников</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-number" id="statCompleted">0</div>
+                    <div class="stat-label">Пройдено тестов</div>
+                </div>
+                <div class="stat-card pink">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-number" id="statAvg">0%</div>
+                    <div class="stat-label">Средний балл</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="testPage" class="page">
+            <div id="testContent"></div>
+        </div>
+    </div>
+
+    <div id="testModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeTestModal()">&times;</span>
+            <h3 id="modalTestTitle">📝 Новый тест</h3>
+            <div class="input-group">
+                <label>Название теста</label>
+                <input type="text" id="modalTestTitleInput" placeholder="Введите название" class="modal-input" required>
+            </div>
+            <div class="input-group">
+                <label>Описание</label>
+                <textarea id="modalTestDesc" placeholder="Опишите тест" rows="2" class="modal-input"></textarea>
+            </div>
+            <div id="modalQuestionsList"></div>
+            <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+                <button onclick="modalAddQuestion('choice')" class="btn-secondary">📝 Выбор ответа</button>
+                <button onclick="modalAddQuestion('text')" class="btn-secondary">✍️ Ввод текста</button>
+                <button onclick="modalAddQuestion('table')" class="btn-secondary">📊 Заполнение таблицы</button>
+            </div>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button onclick="saveTestFromModal()" class="btn-primary">💾 Сохранить тест</button>
+                <button onclick="closeTestModal()" class="btn-outline">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+    <script src="/static/script.js"></script>
+</body>
+</html>
