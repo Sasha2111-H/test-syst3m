@@ -1228,3 +1228,83 @@ function escapeHtml(str) {
         return m;
     });
 }
+// ========== ДЛЯ УЧЕНИКА: ПРОСМОТР ТЕСТОВ ГРУППЫ ==========
+async function showStudentGroup(groupId, groupName) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+        const res = await fetch(`/api/student/group/${groupId}/tests`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showAlert(data.error || 'Ошибка загрузки тестов', 'error');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        let testsHtml = '';
+        if (data.tests.length === 0) {
+            testsHtml = '<p style="text-align:center; padding:30px;">📭 В этой группе пока нет тестов</p>';
+        } else {
+            testsHtml = '<div class="tests-grid">' + data.tests.map(t => {
+                let statusHtml = '';
+                if (t.has_attempted) {
+                    statusHtml = `<div style="margin-top:10px;">
+                                    <span style="background:#48bb78; color:white; padding:4px 10px; border-radius:20px; font-size:12px;">
+                                        ✅ Пройден: ${t.score}/${t.total} (${t.percentage}%)
+                                    </span>
+                                  </div>`;
+                } else {
+                    statusHtml = `<div style="margin-top:10px;">
+                                    <span style="background:#f56565; color:white; padding:4px 10px; border-radius:20px; font-size:12px;">
+                                        ❌ Не пройден
+                                    </span>
+                                  </div>`;
+                }
+                return `
+                    <div class="test-card" onclick="startTest(${t.id}); this.closest('.modal-overlay').remove();">
+                        <h3>📝 ${escapeHtml(t.title)}</h3>
+                        <p>${escapeHtml(t.description || 'Нет описания')}</p>
+                        ${statusHtml}
+                    </div>
+                `;
+            }).join('') + '</div>';
+        }
+
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 800px;">
+                <span class="close-modal" onclick="this.closest('.modal-overlay').remove()">&times;</span>
+                <h2>📚 Группа: ${escapeHtml(data.group_name)}</h2>
+                <p style="margin-bottom:20px;">Доступные тесты:</p>
+                ${testsHtml}
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } catch (err) {
+        showAlert('Ошибка соединения', 'error');
+    }
+}
+
+// Переопределяем loadMyGroups для учеников (делаем карточки кликабельными)
+window.loadMyGroups = async function() {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/my-groups', { 
+        headers: { 'Authorization': 'Bearer ' + token } 
+    });
+    const groups = await res.json();
+    const container = document.getElementById('myGroupsList');
+    
+    if (groups.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#888; padding:40px;">Вы не состоите ни в одной группе</p>';
+    } else {
+        container.innerHTML = groups.map(g => `
+            <div class="group-card" onclick="showStudentGroup(${g.id}, '${escapeHtml(g.name).replace(/'/g, "\\'")}')">
+                <h3>${escapeHtml(g.name)}</h3>
+                <p>${escapeHtml(g.description || 'Нет описания')}</p>
+                <small>📅 Дата вступления: ${new Date(g.created_at).toLocaleDateString('ru-RU')}</small>
+            </div>
+        `).join('');
+    }
+};
