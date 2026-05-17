@@ -724,4 +724,4 @@ if __name__ == '__main__':
     print('\n' + '='*50)
     print('СЕРВЕР ЗАПУЩЕН: http://localhost:3000')
     print('='*50 + '\n')
-    app.run(debug=True, host='0.0.0.0', port=3000)
+    app.run(debug=True, port=3000)
