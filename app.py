@@ -615,20 +615,56 @@ def teacher_stats():
         completed_tests = conn.execute('SELECT COUNT(*) as count FROM results r JOIN tests t ON r.test_id = t.id WHERE t.teacher_id = ?', (request.user_id,)).fetchone()['count']
         return jsonify({'groups_count': groups_count, 'tests_count': tests_count, 'avg_score': avg_score or 0, 'students_count': students_count, 'completed_tests': completed_tests})
 
-# ========== НОВЫЕ МАРШРУТЫ ДЛЯ РЕЗУЛЬТАТОВ ==========
+# ========== НОВЫЙ МАРШРУТ ДЛЯ УЧЕНИКА: ПОЛУЧЕНИЕ ТЕСТОВ ГРУППЫ ==========
+@app.route('/api/student/group/<int:group_id>/tests', methods=['GET'])
+@token_required
+@student_only
+def student_group_tests(group_id):
+    with get_db() as conn:
+        membership = conn.execute('SELECT * FROM group_members WHERE group_id = ? AND user_id = ? AND role = "student"', (group_id, request.user_id)).fetchone()
+        if not membership:
+            return jsonify({'error': 'Доступ запрещён'}), 403
+        
+        tests = conn.execute('''
+            SELECT t.*, 
+                   (SELECT COUNT(*) FROM results WHERE test_id = t.id AND student_id = ?) as has_attempted,
+                   (SELECT score FROM results WHERE test_id = t.id AND student_id = ?) as score,
+                   (SELECT total FROM results WHERE test_id = t.id AND student_id = ?) as total
+            FROM tests t
+            WHERE t.group_id = ?
+            ORDER BY t.created_at DESC
+        ''', (request.user_id, request.user_id, request.user_id, group_id)).fetchall()
+        
+        group = conn.execute('SELECT name FROM groups WHERE id = ?', (group_id,)).fetchone()
+        
+        result = []
+        for t in tests:
+            attempted = t['has_attempted'] > 0
+            score_val = t['score'] if t['score'] is not None else 0
+            total_val = t['total'] if t['total'] is not None else 0
+            percentage = round((score_val / total_val) * 100, 1) if attempted and total_val > 0 else 0
+            result.append({
+                'id': t['id'],
+                'title': t['title'],
+                'description': t['description'],
+                'has_attempted': attempted,
+                'score': score_val,
+                'total': total_val,
+                'percentage': percentage
+            })
+        
+        return jsonify({'group_name': group['name'], 'tests': result})
 
+# ========== МАРШРУТЫ ДЛЯ РЕЗУЛЬТАТОВ (учитель) ==========
 @app.route('/api/test-results/<int:test_id>', methods=['GET'])
 @token_required
 @teacher_only
 def get_test_results(test_id):
-    """Получить результаты теста для всех учеников группы"""
     with get_db() as conn:
-        # Проверяем, что тест принадлежит учителю
         test = conn.execute('SELECT * FROM tests WHERE id = ? AND teacher_id = ?', (test_id, request.user_id)).fetchone()
         if not test:
             return jsonify({'error': 'Тест не найден'}), 404
         
-        # Получаем всех учеников группы
         students = conn.execute('''
             SELECT DISTINCT u.id, u.full_name, u.username, u.email
             FROM group_members gm
@@ -637,7 +673,6 @@ def get_test_results(test_id):
             ORDER BY u.full_name
         ''', (test['group_id'],)).fetchall()
         
-        # Получаем результаты теста
         results = conn.execute('''
             SELECT r.student_id, r.score, r.total, r.completed_at,
                    ROUND(CAST(r.score AS FLOAT) / r.total * 100, 1) as percentage
@@ -645,10 +680,8 @@ def get_test_results(test_id):
             WHERE r.test_id = ?
         ''', (test_id,)).fetchall()
         
-        # Создаем словарь с результатами
         results_dict = {r['student_id']: r for r in results}
         
-        # Формируем список с информацией о каждом ученике
         students_results = []
         for student in students:
             result = results_dict.get(student['id'])
@@ -664,7 +697,6 @@ def get_test_results(test_id):
                 'completed_at': result['completed_at'] if result else None
             })
         
-        # Получаем информацию о тесте
         test_info = {
             'id': test['id'],
             'title': test['title'],
@@ -672,7 +704,6 @@ def get_test_results(test_id):
             'group_id': test['group_id']
         }
         
-        # Получаем название группы
         group = conn.execute('SELECT name FROM groups WHERE id = ?', (test['group_id'],)).fetchone()
         
         return jsonify({
@@ -688,4 +719,9 @@ if __name__ == '__main__':
     print('\n' + '='*50)
     print('СЕРВЕР ЗАПУЩЕН: http://localhost:3000')
     print('='*50 + '\n')
-    app.run(debug=True, port=3000)
+    app.run(debug=True, host='0.0.0.0', port=3000)
+    init_db()
+    print('\n' + '='*50)
+    print('СЕРВЕР ЗАПУЩЕН: http://localhost:3000')
+    print('='*50 + '\n')
+    app.run(debug=True, host='0.0.0.0', port=3000)
